@@ -66,8 +66,8 @@ fn until_newline_or_eof(i: Span) -> IResult<Span, Span> {
 }
 
 fn count_indentation(i: Span) -> IResult<Span, usize> {
-    return Ok((i, 0));
-    // many1_count(one_of(" \t"))(i)
+    // return Ok((i, 0));
+    many0_count(one_of(" \t"))(i)
 }
 
 #[cfg(test)]
@@ -93,14 +93,23 @@ mod test {
 
     #[test]
     fn test_count_indentation() {
-        assert!(count_indentation(Span::new_extra("", "")).is_ok(), 0);
-        assert!(count_indentation(Span::new_extra("\n", "")).is_ok(), 0);
-        assert!(count_indentation(Span::new_extra("aa bb", "")).is_ok(), 0);
-        assert!(count_indentation(Span::new_extra("\ta\tb", "")).is_ok(), 1);
-        assert!(count_indentation(Span::new_extra("\t\t", "")).is_ok(), 2);
-        assert!(count_indentation(Span::new_extra(" ", "")).is_ok(), 1);
-        assert!(count_indentation(Span::new_extra("\t", "")).is_ok(), 1);
-        assert!(count_indentation(Span::new_extra("\t ", "")).is_ok(), 2);
-        assert!(count_indentation(Span::new_extra("\t \t", "")).is_ok(), 3);
+        fn assert_indent(input: &str, indent: usize) {
+            assert_eq!(
+                count_indentation(Span::new_extra(input, "<assert_indent>"))
+                    .unwrap()
+                    .1,
+                indent
+            );
+        }
+
+        assert_indent("", 0);
+        assert_indent("\n", 0);
+        assert_indent("aa bb", 0);
+        assert_indent("\ta\tb", 1);
+        assert_indent("\t\t", 2);
+        assert_indent(" ", 1);
+        assert_indent("\t", 1);
+        assert_indent("\t ", 2);
+        assert_indent("\t \t", 3);
     }
 }
