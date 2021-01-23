@@ -9,6 +9,23 @@ use nom::{
 };
 use rctree::Node;
 
+pub(crate) fn indented_tree(i: Span) -> IResult<Span, Vec<Node<Span>>> {
+    let (rem, mut lines) = indented_lines(i)?;
+    let mut buffer = Vec::new();
+
+    while let Some((indent, line)) = remove_first(&mut lines) {
+        let mut node = Node::new(line);
+        let children = take_children(&mut lines, indent);
+
+        for child in children {
+            node.append(child);
+        }
+        buffer.push(node);
+    }
+
+    Ok((rem, buffer))
+}
+
 fn next_indent(lines: &Vec<(usize, Span)>) -> usize {
     *lines.first().map(|(indent, _line)| indent).unwrap_or(&0)
 }
@@ -16,29 +33,15 @@ fn next_indent(lines: &Vec<(usize, Span)>) -> usize {
 fn take_children<'a>(lines: &mut Vec<(usize, Span<'a>)>, indent: usize) -> Vec<Node<Span<'a>>> {
     let mut siblings = Vec::new();
 
-    // println!(">>>{:?}", (indent, next_indent(&lines), &lines));
-
     // while next line is a sibling or child
     while next_indent(&lines) > indent {
         // pop next line
         if let Some((child_indent, line)) = remove_first(lines) {
             let mut node = Node::new(line);
 
-            println!(
-                "found child {:?}",
-                (
-                    &line.to_string(),
-                    next_indent(&lines),
-                    indent,
-                    child_indent,
-                    &lines
-                )
-            );
-
             // take remaining children
             while next_indent(&lines) > child_indent {
                 let children = take_children(lines, indent);
-                println!("children: {:?}", &children);
 
                 for child in children {
                     node.append(child);
@@ -50,57 +53,6 @@ fn take_children<'a>(lines: &mut Vec<(usize, Span<'a>)>, indent: usize) -> Vec<N
     }
 
     siblings
-}
-
-pub(crate) fn indented_tree(i: Span) -> IResult<Span, Vec<Node<Span>>> {
-    let (rem, mut lines) = indented_lines(i)?;
-    let mut buffer = Vec::new();
-
-    while let Some((indent, line)) = remove_first(&mut lines) {
-        println!("root: {}", line);
-        let mut node = Node::new(line);
-        let children = take_children(&mut lines, indent);
-
-        for child in children {
-            println!("direct child: {}", child);
-            node.append(child);
-        }
-        buffer.push(node);
-    }
-
-    Ok((rem, buffer))
-}
-
-pub(crate) fn _indented_tree(i: Span) -> IResult<Span, Vec<Node<Span>>> {
-    let mut current_indent = 0;
-    let mut current_node = Node::new(Span::new_extra("", ""));
-    let mut output = Vec::new();
-
-    let (rem, lines) = indented_lines(i)?;
-
-    for (indent, line) in lines {
-        let node = Node::new(line);
-        println!("indent {:?}", (indent, current_indent));
-
-        if indent == 0 {
-            current_node = node.clone();
-            output.push(node);
-        } else {
-            current_node.append(node.clone());
-
-            current_node = node;
-
-            // if indent > current_indent {
-            //     current_node.append(node);
-            // } else {
-            //     current_node.append(node);
-            // }
-        }
-
-        current_indent = indent;
-    }
-
-    Ok((rem, output))
 }
 
 fn indented_lines(i: Span) -> IResult<Span, Vec<(usize, Span)>> {
