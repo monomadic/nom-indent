@@ -1,20 +1,5 @@
 use nom_indent::*;
 
-// fn assert_number_of_lines(test: &str, lines: usize) {
-//     match indent(test, "<assertion>") {
-//         Ok(result) => {
-//             let mut count = 0;
-
-//             for child in result.1.children() {
-//                 count = count + 1;
-//             }
-
-//             assert_eq!(count, lines)
-//         }
-//         Err(e) => panic!("statement failed to parse {}, {}", test, e),
-//     }
-// }
-
 /// a small render syntax for simple testing
 fn assert_mini_parser(input: &str, output: &str) {
     use rctree::Node;
