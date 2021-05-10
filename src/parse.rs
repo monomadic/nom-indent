@@ -8,12 +8,14 @@ use nom::{
     IResult,
 };
 use rctree::Node;
+use nom::multi::many0;
+use nom::character::complete::space0;
 
 pub(crate) fn indented_tree(i: Span) -> IResult<Span, Vec<Node<Span>>> {
     let (rem, mut lines) = indented_lines(i)?;
     let mut buffer = Vec::new();
 
-    while let Some((indent, line)) = remove_first(&mut lines) {
+    while let Some((indent, line)) = pop_front(&mut lines) {
         let mut node = Node::new(line);
         let children = take_children(&mut lines, indent);
 
@@ -26,25 +28,34 @@ pub(crate) fn indented_tree(i: Span) -> IResult<Span, Vec<Node<Span>>> {
     Ok((rem, buffer))
 }
 
-fn next_indent(lines: &Vec<(usize, Span)>) -> usize {
-    *lines.first().map(|(indent, _line)| indent).unwrap_or(&0)
+fn next_indent(remaining_lines: &Vec<(usize, Span)>) -> usize {
+    *remaining_lines.into_iter().find(|(indent, content)| {
+        !content.is_empty()
+    }).map(|(indent, line)|
+        indent
+    ).unwrap_or(&0)
 }
 
 fn take_children<'a>(lines: &mut Vec<(usize, Span<'a>)>, indent: usize) -> Vec<Node<Span<'a>>> {
     let mut siblings = Vec::new();
 
-    // while next line is a sibling or child
+    // while next non-whitespace line is a sibling or child
     while next_indent(&lines) > indent {
+
         // pop next line
-        if let Some((child_indent, line)) = remove_first(lines) {
+        if let Some((child_indent, line)) = pop_front(lines) {
             let mut node = Node::new(line);
 
-            // take remaining children
-            while next_indent(&lines) > child_indent {
-                let children = take_children(lines, indent);
+            // if this line is whitespace, it is a sibling, don't check for children
+            if !line.is_empty() {
+                // take remaining children
+                while next_indent(&lines) > child_indent {
+                    let children = take_children(lines, indent);
 
-                for child in children {
-                    node.append(child);
+                    for child in children {
+                        println!("child {:?}", &child);
+                        node.append(child);
+                    }
                 }
             }
 
@@ -85,14 +96,17 @@ pub(crate) fn line(i: Span) -> IResult<Span, (usize, Span)> {
         return Ok((i, (0, i)));
     }
     tuple((
-        // opt(many0(tuple((space0, newline)))), // throw away blank lines
+        // whitespace_line, // throw away blank lines
         count_indentation,
         until_newline_or_eof,
-        // alt((eof, newline))
-        // is_not("\n"),
         opt(newline),
     ))(i)
     .map(|(r, (indent, line, _))| (r, (indent, line)))
+}
+
+fn whitespace_line(i: Span) -> IResult<Span, Span> {
+    opt(many0(tuple((space0, newline))))(i)
+        .map(|(r, ws)| { (r, r) })
 }
 
 /// match an input until either a newline or end of file is found
@@ -101,12 +115,11 @@ fn until_newline_or_eof(i: Span) -> IResult<Span, Span> {
 }
 
 fn count_indentation(i: Span) -> IResult<Span, usize> {
-    // return Ok((i, 0));
     many0_count(one_of(" \t"))(i)
 }
 
-/// remove first element of a vec. warning: expensive
-fn remove_first<T>(vec: &mut Vec<T>) -> Option<T> {
+/// remove first element of a vec. fixme: expensive, use slices instead
+fn pop_front<T>(vec: &mut Vec<T>) -> Option<T> {
     if vec.is_empty() {
         return None;
     }

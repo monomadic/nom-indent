@@ -38,5 +38,8 @@ fn test_parser() {
 
 #[test]
 fn test_whitespace_lines() {
-    assert_mini_parser("a\n\tb\n\t\n\t\tc\n\td", "(a(b(c)(d)))");
+    assert_mini_parser("a\n\tb\n\n\tc", "(a(b)()(c))");
+    assert_mini_parser("a\n\n\tb", "(a()(b))");
+    assert_mini_parser("a\n\n\n", "(a)()()");
+    assert_mini_parser("a\n\tb\n\t\n\t\tc\n\td", "(a(b()(c)(d)))");
 }
