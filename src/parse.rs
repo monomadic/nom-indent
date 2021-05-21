@@ -53,7 +53,6 @@ fn take_children<'a>(lines: &mut Vec<(usize, Span<'a>)>, indent: usize) -> Vec<N
                     let children = take_children(lines, indent);
 
                     for child in children {
-                        println!("child {:?}", &child);
                         node.append(child);
                     }
                 }
